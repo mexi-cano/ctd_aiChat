@@ -4,12 +4,20 @@ import Editor from '@monaco-editor/react';
 import { useState } from "react";
 import { fetchBotReply } from './utils/openai';
 
+interface HintResponse {
+  result: string;
+  hint: string; 
+}
+
 export default function Home() {
-  const codeQuestion = 'Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.';
+  const codeQuestion = 'Write a JavaScript arrow function that adds two values and returns their sum.';
   
   const [message, setMessage] = useState('');
   const [questionApiResponse, setQuestionApiResponse] = useState('');
-  const [hintApiResponse, setHintApiResponse] = useState('');
+  const [hintApiResponse, setHintApiResponse] = useState<HintResponse>({
+    result: '',
+    hint: ''
+  });
   const [codeAttempt, setCodeAttempt] = useState('');
 
   function handleEditorChange(value: any, event: any) {
@@ -25,9 +33,16 @@ export default function Home() {
     setMessage(target.value);
   };
 
-  const handleHintSubmit = (e: { preventDefault: () => void; }) => {
+  const handleHintSubmit = (e: { preventDefault: () => void }) => {
     e.preventDefault();
-    fetchBotReply(`Provide a hint to solve this coding challenege. challenge: ${codeQuestion} my solution: ${codeAttempt}`).then(response => setHintApiResponse(response.choices[0].message.content));
+    
+    fetchBotReply(`task: ${codeQuestion} my solution: ${codeAttempt}`).then((response) => {
+      const hintResponse = JSON.parse(response.choices[0].message.content);
+      setHintApiResponse({
+        result: hintResponse.result,
+        hint: hintResponse.hint
+      });
+    });
   };
 
   const handleQuestionSubmit = (e: { preventDefault: () => void; }) => {
@@ -57,7 +72,8 @@ export default function Home() {
               >
               Get Hint
             </button>
-            <p>{hintApiResponse}</p>
+            <p>Result: {hintApiResponse.result}</p>
+          <p>Hint: {hintApiResponse.hint}</p>
           </form>
         </div>
         <div className='col-span-3'>
