@@ -9,7 +9,7 @@ import { systemPrompt } from "./variables/openai";
 
 export default function Home() {
   const [userInput, setUserInput] = useState<string>("");
-  const [codeAttempt, setCodeAttempt] = useState<string>("");
+  const [codeAttempt, setCodeAttempt] = useState<string>("// code here");
 
   const [chatHistory, setChatHistory] = useState<CompletionMessage[]>([
     { role: "system", content: systemPrompt },
@@ -22,6 +22,8 @@ export default function Home() {
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
+  const [isQuestion, setIsQuestion] = useState<boolean>(false);
+
   const handleUserInput = (e: ChangeEvent<HTMLTextAreaElement>) => {
     setUserInput(e.target.value);
   };
@@ -29,6 +31,49 @@ export default function Home() {
   function handleEditorChange(value: any) {
     setCodeAttempt(value);
   }
+
+  const handlePracticeQuestion = async () => {
+    setIsLoading(true);
+
+    const messages = [
+      ...chatHistory,
+      { role: "user", content: "ask me a similar question" },
+    ];
+
+    try {
+      await fetchEvaluation(messages).then((data) => {
+        setChatHistory([
+          ...messages,
+          { role: "assistant", content: `${data.message}` },
+        ]);
+
+        setHintApiResponse({
+          result: null,
+          hint: "",
+          practiceQuestion: data.message,
+        });
+
+        setUserInput("");
+        setCodeAttempt("// code here");
+        setIsQuestion(true);
+        setIsLoading(false);
+      });
+    } catch {
+      throw new Error("something went wrong");
+    }
+  };
+
+  const handleSessionRestart = () => {
+    setUserInput("");
+    setCodeAttempt("// code here");
+    setChatHistory([{ role: "system", content: systemPrompt }]);
+    setHintApiResponse({
+      result: null,
+      hint: "",
+      practiceQuestion: "",
+    });
+    setIsQuestion(false);
+  };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -55,6 +100,7 @@ export default function Home() {
         });
 
         setUserInput("");
+        setIsQuestion(false);
         setIsLoading(false);
       });
     } catch {
@@ -74,7 +120,7 @@ export default function Home() {
         height="100%"
         defaultLanguage="javascript"
         theme="vs-dark"
-        defaultValue="// code here"
+        value={codeAttempt}
         onChange={handleEditorChange}
       />
 
@@ -98,7 +144,12 @@ export default function Home() {
         </div>
       </form>
 
-      <Results hintApiResponse={hintApiResponse} />
+      <Results
+        hintApiResponse={hintApiResponse}
+        handleSessionRestart={handleSessionRestart}
+        isQuestion={isQuestion}
+        handlePracticeQuestion={handlePracticeQuestion}
+      />
     </main>
   );
 }
