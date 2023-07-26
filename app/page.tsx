@@ -1,107 +1,104 @@
 "use client";
-import "tailwindcss/tailwind.css";
+import { ChangeEvent, FormEvent, useState } from "react";
 import Editor from "@monaco-editor/react";
-import { useState } from "react";
-import { fetchBotReply } from "./utils/openai";
-
-interface HintResponse {
-  result: string;
-  hint: string;
-}
+import Results from "./components/Results";
+import fetchEvaluation from "./fetchCalls/fetchEvaluation";
+import { EvaluationResponse } from "./types/EvaluationResponse";
+import { CompletionMessage } from "./types/CompletionMessage";
+import { systemPrompt } from "./variables/openai";
 
 export default function Home() {
-  const codeQuestion =
-    "Write a JavaScript arrow function that adds two values and returns their sum.";
+  const [userInput, setUserInput] = useState<string>("");
+  const [codeAttempt, setCodeAttempt] = useState<string>("");
 
-  const [message, setMessage] = useState("");
-  const [questionApiResponse, setQuestionApiResponse] = useState("");
-  const [hintApiResponse, setHintApiResponse] = useState<HintResponse>({
-    result: "",
+  const [chatHistory, setChatHistory] = useState<CompletionMessage[]>([
+    { role: "system", content: systemPrompt },
+  ]);
+
+  const [hintApiResponse, setHintApiResponse] = useState<EvaluationResponse>({
+    result: null,
     hint: "",
   });
-  const [codeAttempt, setCodeAttempt] = useState("");
 
-  function handleEditorChange(value: any, event: any) {
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  const handleUserInput = (e: ChangeEvent<HTMLTextAreaElement>) => {
+    setUserInput(e.target.value);
+  };
+
+  function handleEditorChange(value: any) {
     setCodeAttempt(value);
   }
 
-  const resetInput = () => {
-    setMessage("");
-  };
-
-  const handleInput = (e: React.SyntheticEvent) => {
-    const target = e.target as HTMLInputElement;
-    setMessage(target.value);
-  };
-
-  const handleHintSubmit = (e: { preventDefault: () => void }) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setIsLoading(true);
 
-    fetchBotReply(`task: ${codeQuestion} my solution: ${codeAttempt}`).then(
-      (response) => {
-        const hintResponse = JSON.parse(response.choices[0].message.content);
+    const messages = [
+      ...chatHistory,
+      { role: "user", content: `${codeAttempt + `\n ` + userInput}` },
+    ];
+
+    try {
+      await fetchEvaluation(messages).then((data) => {
+        setChatHistory([
+          ...messages,
+          { role: "assistant", content: `${data.message}` },
+        ]);
+
+        const hintResponse = JSON.parse(data.message);
+        console.log(hintResponse);
+
         setHintApiResponse({
           result: hintResponse.result,
           hint: hintResponse.hint,
         });
-      },
-    );
-  };
 
-  const handleQuestionSubmit = (e: { preventDefault: () => void }) => {
-    e.preventDefault();
-    fetchBotReply(message)
-      .then((response) =>
-        setQuestionApiResponse(response.choices[0].message.content),
-      )
-      .then(() => resetInput());
+        setUserInput("");
+        setIsLoading(false);
+      });
+    } catch {
+      throw new Error("something went wrong");
+    }
   };
 
   return (
-    <main className="min-h-screen p-24">
-      <div className="grid grid-rows-3 gap-4 font-mono">
-        <div className="col-span-6 mb-5">
-          <p className="mb-5">{codeQuestion}</p>
-          <Editor
-            height="60vh"
-            defaultLanguage="javascript"
-            defaultValue="// code here"
-            onChange={handleEditorChange}
-          />
+    <main className="flex h-screen flex-col justify-center items-center p-4 m-auto max-w-screen-2xl">
+      <h1 className="mb-2 text-3xl">Function Assessment Tool</h1>
+      <p className="mb-2">
+        Present a function and it will evaluate its functionality
+      </p>
+
+      <Editor
+        width="100%"
+        height="100%"
+        defaultLanguage="javascript"
+        theme="vs-dark"
+        defaultValue="// code here"
+        onChange={handleEditorChange}
+      />
+
+      <form
+        className="flex flex-row w-full h-20 items-center mt-4"
+        onSubmit={handleSubmit}
+      >
+        <textarea
+          className="text-white bg-[#252526] w-full p-2 w-full mr-4"
+          placeholder="Any clarifications?"
+          value={userInput}
+          onChange={handleUserInput}
+        />
+        <div className="flex items-center justify-center h-20">
+          <button
+            type="submit"
+            className=" border-2 p-4 bg-[#097969] hover:bg-[#0B4D4D] text-white text-xl"
+          >
+            Evaluate
+          </button>
         </div>
-        <div className="col-span-3">
-          <p className="mb-2">Stuck? Ask CtD Genie for a hint:</p>
-          <form onSubmit={handleHintSubmit}>
-            <button
-              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 mb-5 rounded focus:outline-none focus:shadow-outline"
-              type="submit"
-            >
-              Get Hint
-            </button>
-            <p>Result: {hintApiResponse.result}</p>
-            <p>Hint: {hintApiResponse.hint}</p>
-          </form>
-        </div>
-        <div className="col-span-3">
-          <p className="mb-2">Or ask CtD Genie a question:</p>
-          <form onSubmit={handleQuestionSubmit}>
-            <input
-              className="shadow appearance-none border border-red-500 rounded w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline"
-              type="text"
-              placeholder="Type your question here."
-              value={message}
-              onChange={handleInput}
-            />
-            <button
-              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 mb-5 rounded focus:outline-none focus:shadow-outline"
-              type="submit"
-            >
-              Submit
-            </button>
-            <p>{questionApiResponse}</p>
-          </form>
-        </div>
-      </div>
+      </form>
+
+      <Results hintApiResponse={hintApiResponse} />
     </main>
   );
 }
