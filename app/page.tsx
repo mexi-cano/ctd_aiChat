@@ -37,7 +37,7 @@ export default function Home() {
 
     const messages = [
       ...chatHistory,
-      { role: "user", content: "ask me a similar question" },
+      { role: "user", content: "ask me a similar question, no code block" },
     ];
 
     try {
