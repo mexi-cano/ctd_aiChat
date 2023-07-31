@@ -1,13 +1,15 @@
 "use client";
 import { ChangeEvent, FormEvent, useState } from "react";
-import Editor from "@monaco-editor/react";
-import Results from "./components/Results";
+import Assessment from "./components/Views/Assessment";
+import Explain from "./components/Views/Explain";
+import Toggle from "./components/Switch";
 import fetchEvaluation from "./fetchCalls/fetchEvaluation";
 import { EvaluationResponse } from "./types/EvaluationResponse";
 import { CompletionMessage } from "./types/CompletionMessage";
 import { systemPrompt } from "./variables/openai";
 
 export default function Home() {
+  const [enabled, setEnabled] = useState(false)
   const [userInput, setUserInput] = useState<string>("");
   const [codeAttempt, setCodeAttempt] = useState<string>("// code here");
 
@@ -23,6 +25,14 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const [isQuestion, setIsQuestion] = useState<boolean>(false);
+
+  const toggleEnabled = () => {
+    setEnabled(prev => !prev);
+  };
+  
+  const handleToggleChange = () => {
+    toggleEnabled();
+  };
 
   const handleUserInput = (e: ChangeEvent<HTMLTextAreaElement>) => {
     setUserInput(e.target.value);
@@ -110,46 +120,35 @@ export default function Home() {
 
   return (
     <main className="flex h-screen flex-col justify-center items-center p-4 m-auto max-w-screen-2xl">
-      <h1 className="mb-2 text-3xl">Function Assessment Tool</h1>
-      <p className="mb-2">
-        Present a function and it will evaluate its functionality
-      </p>
-
-      <Editor
-        width="100%"
-        height="100%"
-        defaultLanguage="javascript"
-        theme="vs-dark"
-        value={codeAttempt}
-        onChange={handleEditorChange}
+      <Toggle 
+        id="toggle"
+        label="Switch to analyzing function"
+        checked={enabled}
+        onChange={handleToggleChange} 
       />
-
-      <form
-        className="flex flex-row w-full h-20 items-center mt-4"
-        onSubmit={handleSubmit}
-      >
-        <textarea
-          className="text-white bg-[#252526] w-full p-2 w-full mr-4"
-          placeholder="Any clarifications?"
-          value={userInput}
-          onChange={handleUserInput}
-        />
-        <div className="flex items-center justify-center h-20">
-          <button
-            type="submit"
-            className=" border-2 p-4 bg-[#097969] hover:bg-[#0B4D4D] text-white text-xl"
-          >
-            Evaluate
-          </button>
-        </div>
-      </form>
-
-      <Results
-        hintApiResponse={hintApiResponse}
-        handleSessionRestart={handleSessionRestart}
-        isQuestion={isQuestion}
-        handlePracticeQuestion={handlePracticeQuestion}
-      />
+      {enabled ? (
+         <Explain
+          codeAttempt={codeAttempt}
+          handleEditorChange={handleEditorChange}
+          userInput={userInput}
+          handleUserInput={handleUserInput}
+          handleSubmit={handleSubmit}
+          hintApiResponse={hintApiResponse}
+          handleSessionRestart={handleSessionRestart}
+          isQuestion={isQuestion}
+          handlePracticeQuestion={handlePracticeQuestion} />
+      ) : (
+        <Assessment
+          codeAttempt={codeAttempt}
+          handleEditorChange={handleEditorChange}
+          userInput={userInput}
+          handleUserInput={handleUserInput}
+          handleSubmit={handleSubmit}
+          hintApiResponse={hintApiResponse}
+          handleSessionRestart={handleSessionRestart}
+          isQuestion={isQuestion}
+          handlePracticeQuestion={handlePracticeQuestion} />
+      )}
     </main>
   );
 }
