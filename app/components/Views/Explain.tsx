@@ -1,30 +1,13 @@
 import { FC } from 'react' 
 import Editor from "@monaco-editor/react";
-import Results from '../Results';
-import { EvaluationResponse } from '@/app/types/EvaluationResponse';
+import ExplanationResults from '../ExplanationResults';
+import ExplainComponentProps from '@/app/types/ExplainComponentProps';
 
-interface Props {
-  codeAttempt: string
-  handleEditorChange: (value: any) => void
-  userInput: string 
-  handleUserInput: (event: React.ChangeEvent<HTMLTextAreaElement>) => void
-  handleSubmit: (event: React.FormEvent<HTMLFormElement>) => void
-  hintApiResponse: EvaluationResponse
-  handleSessionRestart: () => void
-  isQuestion: boolean
-  handlePracticeQuestion: () => void
-}
-
-const Explain: FC<Props> = ({
+const Explain: FC<ExplainComponentProps> = ({
   codeAttempt,
   handleEditorChange,
-  userInput,
-  handleUserInput,
   handleSubmit,
-  hintApiResponse,
-  handleSessionRestart,
-  isQuestion,
-  handlePracticeQuestion
+  explanationApiResponse
 }) => {
 
   return (
@@ -44,29 +27,17 @@ const Explain: FC<Props> = ({
         onChange={handleEditorChange} 
       />
 
-      <form className="flex flex-row w-full h-20 items-center mt-4" onSubmit={handleSubmit}>
-        <textarea 
-          className="text-white bg-\[#252526\] w-full p-2 w-full mr-4" 
-          placeholder="Any clarifications?" 
-          value={userInput} 
-          onChange={handleUserInput} 
-        />
-
-        <div className="flex items-center justify-center h-20">
-          <button 
-            type="submit" 
-            className=" border-2 p-4 bg-\[#097969\] hover:bg-\[#0B4D4D\] text-white text-xl" 
-          >
-            Evaluate  
-          </button>
+    <form className="flex flex-row w-full h-20 items-center mt-4" onSubmit={handleSubmit}>
+        <div className="flex-1"></div>
+        <div>
+            <button type="submit" className="border-2 p-4 bg-[#097969] hover:bg-[#0B4D4D] text-white text-xl">
+                Evaluate 
+            </button>
         </div>
-      </form>
+    </form>
 
-      <Results
-        hintApiResponse={hintApiResponse}
-        handleSessionRestart={handleSessionRestart}
-        isQuestion={isQuestion}
-        handlePracticeQuestion={handlePracticeQuestion} 
+      <ExplanationResults
+        explanationApiResponse={explanationApiResponse}
       />
     </>
   )

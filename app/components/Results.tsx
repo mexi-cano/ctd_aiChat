@@ -1,5 +1,4 @@
 import { EvaluationResponse } from "../types/EvaluationResponse";
-
 export interface ResultProps {
   hintApiResponse: EvaluationResponse;
   handleSessionRestart: () => void;

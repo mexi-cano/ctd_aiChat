@@ -5,21 +5,27 @@ import Explain from "./components/Views/Explain";
 import Toggle from "./components/Switch";
 import fetchEvaluation from "./fetchCalls/fetchEvaluation";
 import { EvaluationResponse } from "./types/EvaluationResponse";
+import { ExplanationResponse } from "./types/ExplanationResponse";
 import { CompletionMessage } from "./types/CompletionMessage";
-import { systemPrompt } from "./variables/openai";
+import { assessmentSystemPrompt, exaplanationSystemPrompt } from "./variables/openai";
 
 export default function Home() {
-  const [enabled, setEnabled] = useState(false)
+  const [enabled, setEnabled] = useState(false);
+  const [currentView, setCurrentView] = useState('Assessment');
   const [userInput, setUserInput] = useState<string>("");
   const [codeAttempt, setCodeAttempt] = useState<string>("// code here");
 
   const [chatHistory, setChatHistory] = useState<CompletionMessage[]>([
-    { role: "system", content: systemPrompt },
+    { role: "system", content: assessmentSystemPrompt },
   ]);
 
   const [hintApiResponse, setHintApiResponse] = useState<EvaluationResponse>({
     result: null,
     hint: "",
+  });
+
+  const [explanationApiResponse, setExplanationApiResponse] = useState<ExplanationResponse>({
+    explanation: ""
   });
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -32,6 +38,8 @@ export default function Home() {
   
   const handleToggleChange = () => {
     toggleEnabled();
+    // Sets view on toggle:
+    setCurrentView(enabled ? 'Assessment' : 'Explain');
   };
 
   const handleUserInput = (e: ChangeEvent<HTMLTextAreaElement>) => {
@@ -76,7 +84,7 @@ export default function Home() {
   const handleSessionRestart = () => {
     setUserInput("");
     setCodeAttempt("// code here");
-    setChatHistory([{ role: "system", content: systemPrompt }]);
+    setChatHistory([{ role: "system", content: assessmentSystemPrompt }]);
     setHintApiResponse({
       result: null,
       hint: "",
@@ -89,33 +97,71 @@ export default function Home() {
     e.preventDefault();
     setIsLoading(true);
 
-    const messages = [
-      ...chatHistory,
-      { role: "user", content: `${codeAttempt + `\n ` + userInput}` },
-    ];
+    const isExplain = currentView === 'explain';
 
-    try {
-      await fetchEvaluation(messages).then((data) => {
-        setChatHistory([
-          ...messages,
-          { role: "assistant", content: `${data.message}` },
-        ]);
+    if (isExplain) {
+      // Explain submission logic
 
-        const hintResponse = JSON.parse(data.message);
-        console.log(hintResponse);
+      setChatHistory([
+        { role: "system", content: exaplanationSystemPrompt },
+      ]);
 
-        setHintApiResponse({
-          result: hintResponse.result,
-          hint: hintResponse.hint,
+      const messages = [
+        ...chatHistory,
+        { role: "user", content: `${codeAttempt }`},
+      ];
+
+      try {
+        await fetchEvaluation(messages).then((data) => {
+          setChatHistory([
+            ...messages,
+            { role: "assistant", content: `${data.message}` },
+          ]);
+  
+          const hintResponse = JSON.parse(data.message);
+          console.log(hintResponse);
+  
+          setExplanationApiResponse({
+            explanation: hintResponse
+          });
+  
+          setUserInput("");
+          // setIsQuestion(false);
+          setIsLoading(false);
         });
-
-        setUserInput("");
-        setIsQuestion(false);
-        setIsLoading(false);
-      });
-    } catch {
-      throw new Error("something went wrong");
-    }
+      } catch  {
+        throw new Error("something went wrong");
+      }
+    } else {
+      // Assessment submission logic 
+      const messages = [
+        ...chatHistory,
+        { role: "user", content: `${codeAttempt + `\n ` + userInput}` },
+      ];
+  
+      try {
+        await fetchEvaluation(messages).then((data) => {
+          setChatHistory([
+            ...messages,
+            { role: "assistant", content: `${data.message}` },
+          ]);
+  
+          const hintResponse = JSON.parse(data.message);
+          console.log(hintResponse);
+  
+          setHintApiResponse({
+            result: hintResponse.result,
+            hint: hintResponse.hint,
+          });
+  
+          setUserInput("");
+          setIsQuestion(false);
+          setIsLoading(false);
+        });
+      } catch {
+        throw new Error("something went wrong");
+      };
+    };
   };
 
   return (
@@ -130,13 +176,8 @@ export default function Home() {
          <Explain
           codeAttempt={codeAttempt}
           handleEditorChange={handleEditorChange}
-          userInput={userInput}
-          handleUserInput={handleUserInput}
           handleSubmit={handleSubmit}
-          hintApiResponse={hintApiResponse}
-          handleSessionRestart={handleSessionRestart}
-          isQuestion={isQuestion}
-          handlePracticeQuestion={handlePracticeQuestion} />
+          explanationApiResponse={explanationApiResponse} />
       ) : (
         <Assessment
           codeAttempt={codeAttempt}
