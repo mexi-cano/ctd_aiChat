@@ -18,7 +18,7 @@ export interface ExplanationResultProps {
               </div>
             ) : (
               <div className="flex flex-row">   
-                <p className="mb-2 text-lg font-bold mr-2">No code entered.</p>
+                
               </div>
             )}
           </>

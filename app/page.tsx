@@ -1,5 +1,5 @@
 "use client";
-import { ChangeEvent, FormEvent, useState } from "react";
+import { ChangeEvent, FormEvent, useState, useEffect } from "react";
 import Assessment from "./components/Views/Assessment";
 import Explain from "./components/Views/Explain";
 import Toggle from "./components/Switch";
@@ -41,6 +41,16 @@ export default function Home() {
     // Sets view on toggle:
     setCurrentView(enabled ? 'Assessment' : 'Explain');
   };
+
+  useEffect(() => {
+    const isExplain = currentView === 'Explain';
+
+    if (isExplain) {
+      setChatHistory([
+        { role: "system", content: exaplanationSystemPrompt },
+      ]);
+    }
+  }, [enabled]);
 
   const handleUserInput = (e: ChangeEvent<HTMLTextAreaElement>) => {
     setUserInput(e.target.value);
@@ -97,38 +107,36 @@ export default function Home() {
     e.preventDefault();
     setIsLoading(true);
 
-    const isExplain = currentView === 'explain';
+    const isExplain = currentView === 'Explain';
 
     if (isExplain) {
       // Explain submission logic
-
-      setChatHistory([
-        { role: "system", content: exaplanationSystemPrompt },
-      ]);
-
+      console.log('Running Explain logic.')
       const messages = [
         ...chatHistory,
         { role: "user", content: `${codeAttempt }`},
       ];
 
       try {
+        console.log('Trying Explain code.')
         await fetchEvaluation(messages).then((data) => {
           setChatHistory([
             ...messages,
             { role: "assistant", content: `${data.message}` },
           ]);
   
-          const hintResponse = JSON.parse(data.message);
-          console.log(hintResponse);
+          console.log('data:', data)
+          // const hintResponse = JSON.parse(data.message);
+          // console.log(hintResponse);
   
           setExplanationApiResponse({
-            explanation: hintResponse
+            explanation: data.message
           });
   
           setUserInput("");
           // setIsQuestion(false);
           setIsLoading(false);
-        });
+        }).catch(error => console.log('error:', error));
       } catch  {
         throw new Error("something went wrong");
       }
